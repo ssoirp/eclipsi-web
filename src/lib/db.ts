@@ -23,15 +23,19 @@ export async function initDatabase() {
       google_maps_url TEXT,
       proposat BOOLEAN DEFAULT false,
       notes TEXT DEFAULT '',
-      tipus_entorn TEXT DEFAULT ''
+      tipus_entorn TEXT DEFAULT '',
+      descartat BOOLEAN DEFAULT false
     )
   `;
 
-  // Migration: add tipus_entorn if missing
+  // Migrations for existing tables
   await sql`
     DO $$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='tipus_entorn') THEN
         ALTER TABLE locations ADD COLUMN tipus_entorn TEXT DEFAULT '';
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='descartat') THEN
+        ALTER TABLE locations ADD COLUMN descartat BOOLEAN DEFAULT false;
       END IF;
     END $$;
   `;
