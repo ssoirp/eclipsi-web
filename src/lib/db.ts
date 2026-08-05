@@ -22,8 +22,18 @@ export async function initDatabase() {
       distancia_min INTEGER,
       google_maps_url TEXT,
       proposat BOOLEAN DEFAULT false,
-      notes TEXT DEFAULT ''
+      notes TEXT DEFAULT '',
+      tipus_entorn TEXT DEFAULT ''
     )
+  `;
+
+  // Migration: add tipus_entorn if missing
+  await sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='tipus_entorn') THEN
+        ALTER TABLE locations ADD COLUMN tipus_entorn TEXT DEFAULT '';
+      END IF;
+    END $$;
   `;
 
   await sql`
@@ -39,7 +49,7 @@ export async function initDatabase() {
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id),
       location_id INTEGER REFERENCES locations(id),
-      vote BOOLEAN DEFAULT false,
+      rating INTEGER DEFAULT 0,
       UNIQUE(user_id, location_id)
     )
   `;
@@ -51,6 +61,15 @@ export async function initDatabase() {
       url TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
+  `;
+
+  // Migration: add rating column if votes table existed with old schema
+  await sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='votes' AND column_name='rating') THEN
+        ALTER TABLE votes ADD COLUMN rating INTEGER DEFAULT 0;
+      END IF;
+    END $$;
   `;
 }
 

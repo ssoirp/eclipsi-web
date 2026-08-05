@@ -3,11 +3,8 @@ import { sql } from "@/lib/db";
 
 export async function PUT(request: Request) {
   try {
-    const { user_id, location_id, rating } = await request.json();
-    await sql`
-      UPDATE votes SET rating = ${rating}
-      WHERE user_id = ${user_id} AND location_id = ${location_id}
-    `;
+    const { location_id, tipus_entorn } = await request.json();
+    await sql`UPDATE locations SET tipus_entorn = ${tipus_entorn} WHERE id = ${location_id}`;
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });

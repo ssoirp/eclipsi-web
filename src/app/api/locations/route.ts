@@ -6,7 +6,7 @@ export async function GET() {
     const { rows: locations } = await sql`
       SELECT l.*,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', v.id, 'user_id', v.user_id, 'vote', v.vote))
+          (SELECT json_agg(json_build_object('id', v.id, 'user_id', v.user_id, 'rating', COALESCE(v.rating, 0)))
            FROM votes v WHERE v.location_id = l.id), '[]'
         ) as votes,
         COALESCE(

@@ -30,8 +30,8 @@ export async function POST() {
     for (const user of userIds) {
       for (const loc of locationIds) {
         await sql`
-          INSERT INTO votes (user_id, location_id, vote)
-          VALUES (${user.id}, ${loc.id}, false)
+          INSERT INTO votes (user_id, location_id, rating)
+          VALUES (${user.id}, ${loc.id}, 0)
           ON CONFLICT (user_id, location_id) DO NOTHING
         `;
       }
