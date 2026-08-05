@@ -47,7 +47,6 @@ export default function EclipseTable() {
   const [sortAsc, setSortAsc] = useState(true);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<{ id: number; field: string } | null>(null);
-  const [editingUser, setEditingUser] = useState<number | null>(null);
   const [showOnlyProposed, setShowOnlyProposed] = useState(false);
   const [hideDiscarded, setHideDiscarded] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
@@ -137,7 +136,6 @@ export default function EclipseTable() {
       body: JSON.stringify({ id: userId, name }),
     });
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, name } : u));
-    setEditingUser(null);
   };
 
   const saveEntorn = async (locationId: number, tipus_entorn: string) => {
@@ -259,19 +257,7 @@ export default function EclipseTable() {
                 <th className="px-2 py-2 text-center font-medium whitespace-nowrap">Fi ecl.</th>
                 <th className="px-2 py-2 text-right font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap" onClick={() => handleSort("durada_totalitat_s")}>Dur.(s){sortIcon("durada_totalitat_s")}</th>
                 <th className="px-2 py-2 text-right font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap" onClick={() => handleSort("magnitud")}>Mag.{sortIcon("magnitud")}</th>
-                {users.map((user) => (
-                  <th key={user.id} className="px-1 py-2 text-center font-medium whitespace-nowrap min-w-[70px]">
-                    {editingUser === user.id ? (
-                      <input defaultValue={user.name} className="w-16 px-1 py-0.5 text-[10px] border rounded dark:bg-gray-700 dark:border-gray-600"
-                        onBlur={(e) => saveUserName(user.id, e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") saveUserName(user.id, (e.target as HTMLInputElement).value); if (e.key === "Escape") setEditingUser(null); }}
-                        autoFocus />
-                    ) : (
-                      <span className="cursor-pointer hover:text-blue-600 text-[10px]" onClick={() => setEditingUser(user.id)} title="Clic per canviar nom">{user.name}</span>
-                    )}
-                  </th>
-                ))}
-                <th className="px-2 py-2 text-right font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap" onClick={() => handleSort("avg_rating")}>Mitj.{sortIcon("avg_rating")}</th>
+                <th className="px-2 py-2 text-center font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap min-w-[90px]" onClick={() => handleSort("avg_rating")}>Valoració{sortIcon("avg_rating")}</th>
                 <th className="px-2 py-2 text-left font-medium whitespace-nowrap min-w-[100px]">Notes</th>
               </tr>
             </thead>
@@ -418,18 +404,17 @@ export default function EclipseTable() {
                       )}
                     </td>
 
-                    {/* Star ratings */}
-                    {users.map((user) => {
-                      const vote = loc.votes.find((v) => v.user_id === user.id);
-                      return (
-                        <td key={user.id} className="px-0 py-1.5 text-center">
-                          <StarRating rating={vote?.rating ?? 0} onChange={(r) => setRating(user.id, loc.id, r)} />
-                        </td>
-                      );
-                    })}
-
-                    {/* Average */}
-                    <td className="px-2 py-1.5 text-right tabular-nums font-medium">{avg > 0 ? avg.toFixed(1) : "—"}</td>
+                    {/* Compact rating */}
+                    <td className="px-1 py-1.5 text-center">
+                      <RatingCell
+                        locationId={loc.id}
+                        votes={loc.votes}
+                        users={users}
+                        avg={avg}
+                        onRate={setRating}
+                        onRenameUser={saveUserName}
+                      />
+                    </td>
 
                     {/* Notes */}
                     <td className="px-2 py-1.5">
@@ -491,19 +476,85 @@ function EditableCell({ id, field, value, type, editing, setEditing, onSave, ali
   );
 }
 
-function StarRating({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
-  const [hover, setHover] = useState(0);
+function RatingCell({ locationId, votes, users, avg, onRate, onRenameUser }: {
+  locationId: number;
+  votes: Vote[];
+  users: User[];
+  avg: number;
+  onRate: (userId: number, locationId: number, rating: number) => void;
+  onRenameUser: (userId: number, name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [renamingUser, setRenamingUser] = useState<number | null>(null);
+
+  const ratingColor = avg === 0 ? "bg-gray-200 dark:bg-gray-700" : avg < 2 ? "bg-red-400" : avg < 3.5 ? "bg-amber-400" : "bg-green-500";
+  const hasVotes = votes.some((v) => v.rating > 0);
+
   return (
-    <div className="flex gap-0 justify-center" onMouseLeave={() => setHover(0)}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button key={star}
-          className={`text-sm leading-none transition-colors ${star <= (hover || rating) ? "text-amber-400" : "text-gray-300 dark:text-gray-600"}`}
-          onMouseEnter={() => setHover(star)}
-          onClick={() => onChange(star === rating ? 0 : star)}
-          title={star === rating ? "Treure valoració" : `${star} estrella${star > 1 ? "s" : ""}`}>
-          ★
-        </button>
-      ))}
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 mx-auto group"
+        title="Clic per valorar"
+      >
+        <div className="w-[40px] h-[6px] rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${ratingColor}`} style={{ width: `${(avg / 5) * 100}%` }} />
+        </div>
+        <span className={`text-[11px] font-medium tabular-nums min-w-[18px] ${hasVotes ? "" : "text-gray-400"}`}>
+          {hasVotes ? avg.toFixed(1) : "—"}
+        </span>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => { setOpen(false); setRenamingUser(null); }} />
+          <div className="absolute z-40 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl p-2 min-w-[170px]">
+            {users.map((user) => {
+              const vote = votes.find((v) => v.user_id === user.id);
+              const r = vote?.rating ?? 0;
+              return (
+                <div key={user.id} className="flex items-center justify-between gap-2 py-1">
+                  {renamingUser === user.id ? (
+                    <input
+                      defaultValue={user.name}
+                      className="text-[10px] w-16 px-1 py-0.5 border rounded dark:bg-gray-700 dark:border-gray-600"
+                      onBlur={(e) => { onRenameUser(user.id, e.target.value); setRenamingUser(null); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { onRenameUser(user.id, (e.target as HTMLInputElement).value); setRenamingUser(null); }
+                        if (e.key === "Escape") setRenamingUser(null);
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      className="text-[10px] text-gray-500 truncate max-w-[60px] cursor-pointer hover:text-blue-500"
+                      onClick={() => setRenamingUser(user.id)}
+                      title="Clic per canviar nom"
+                    >
+                      {user.name}
+                    </span>
+                  )}
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => onRate(user.id, locationId, n === r ? 0 : n)}
+                        className={`w-5 h-5 rounded text-[10px] font-bold transition-colors ${
+                          n <= r
+                            ? "bg-amber-400 text-white"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-amber-100 dark:hover:bg-amber-900"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
