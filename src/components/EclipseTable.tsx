@@ -35,6 +35,9 @@ export default function EclipseTable() {
   const [hideDiscarded, setHideDiscarded] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"cards" | "map">("cards");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addingPoint, setAddingPoint] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const res = await fetch("/api/locations");
@@ -122,6 +125,28 @@ export default function EclipseTable() {
     await fetch("/api/images", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, url }) });
     await fetchData();
   };
+  const addPoint = async (nom: string, latitud: string, longitud: string) => {
+    setAddingPoint(true);
+    setAddError(null);
+    try {
+      const res = await fetch("/api/locations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nom, latitud: latitud || null, longitud: longitud || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddError(data.error || "Error afegint el punt");
+        return;
+      }
+      setLocations((prev) => [...prev, data.location]);
+      setShowAddForm(false);
+    } catch {
+      setAddError("Error de connexió");
+    } finally {
+      setAddingPoint(false);
+    }
+  };
 
   const isEd = (id: number, field: string) => editing?.id === id && editing?.field === field;
 
@@ -156,7 +181,20 @@ export default function EclipseTable() {
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={showOnlyProposed} onChange={() => setShowOnlyProposed(!showOnlyProposed)} className="rounded" />Només proposats</label>
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={hideDiscarded} onChange={() => setHideDiscarded(!hideDiscarded)} className="rounded" />Amagar descartats</label>
         <span className="text-sm text-gray-400">{sorted.length}/{locations.length}</span>
+        <button onClick={() => { setShowAddForm(true); setAddError(null); }}
+          className="ml-auto px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600">
+          + Afegir punt
+        </button>
       </div>
+
+      {showAddForm && (
+        <AddPointForm
+          submitting={addingPoint}
+          error={addError}
+          onCancel={() => setShowAddForm(false)}
+          onSubmit={addPoint}
+        />
+      )}
 
       {/* Sort bar */}
       {viewMode === "cards" && (
@@ -324,6 +362,55 @@ export default function EclipseTable() {
         </div>
       )}
     </div>
+  );
+}
+
+function AddPointForm({ submitting, error, onCancel, onSubmit }: {
+  submitting: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSubmit: (nom: string, latitud: string, longitud: string) => void;
+}) {
+  const [nom, setNom] = useState("");
+  const [latitud, setLatitud] = useState("");
+  const [longitud, setLongitud] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nom.trim()) return;
+    onSubmit(nom.trim(), latitud.trim(), longitud.trim());
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-4 p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg flex flex-wrap gap-3 items-end">
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Nom / lloc *</label>
+        <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex: Ermita de..."
+          className="px-2 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 w-56" autoFocus required />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Latitud (opcional)</label>
+        <input value={latitud} onChange={(e) => setLatitud(e.target.value)} placeholder="41.466194"
+          className="px-2 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 w-32" />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Longitud (opcional)</label>
+        <input value={longitud} onChange={(e) => setLongitud(e.target.value)} placeholder="0.847361"
+          className="px-2 py-1.5 text-sm border rounded dark:bg-gray-700 dark:border-gray-600 w-32" />
+      </div>
+      <button type="submit" disabled={submitting}
+        className="px-3 py-1.5 text-sm font-medium rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">
+        {submitting ? "Calculant..." : "Afegir"}
+      </button>
+      <button type="button" onClick={onCancel} disabled={submitting}
+        className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
+        Cancel·lar
+      </button>
+      {error && <p className="text-sm text-red-500 basis-full">{error}</p>}
+      <p className="text-xs text-gray-400 basis-full">
+        Si no poses coordenades, es buscarà el lloc automàticament per nom (com fa el script Python).
+      </p>
+    </form>
   );
 }
 
