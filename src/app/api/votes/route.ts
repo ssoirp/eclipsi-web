@@ -5,8 +5,9 @@ export async function PUT(request: Request) {
   try {
     const { user_id, location_id, rating } = await request.json();
     await sql`
-      UPDATE votes SET rating = ${rating}
-      WHERE user_id = ${user_id} AND location_id = ${location_id}
+      INSERT INTO votes (user_id, location_id, rating)
+      VALUES (${user_id}, ${location_id}, ${rating})
+      ON CONFLICT (user_id, location_id) DO UPDATE SET rating = ${rating}
     `;
     return NextResponse.json({ success: true });
   } catch (error) {

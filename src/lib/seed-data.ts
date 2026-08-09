@@ -24,9 +24,9 @@ export const LOCATIONS = [
 ];
 
 export const DEFAULT_USERS = [
-  { name: "Usuari 1", is_admin: true },
-  { name: "Usuari 2", is_admin: false },
-  { name: "Usuari 3", is_admin: false },
-  { name: "Usuari 4", is_admin: false },
-  { name: "Usuari 5", is_admin: false },
+  { name: "Visita", is_admin: true },
+  { name: "Acces cotxe", is_admin: false },
+  { name: "Parking", is_admin: false },
+  { name: "Espai", is_admin: false },
+  { name: "Visibilitat", is_admin: false },
 ];

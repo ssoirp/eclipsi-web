@@ -1,0 +1,38 @@
+[
+ {
+  "comarca": "Priorat",
+  "municipis_totals": 23,
+  "municipis_amb_algun_registre": 23,
+  "fonts_consultades": "OpenStreetMap/Overpass (font_cartografica)",
+  "llocs_trobats": 703,
+  "llocs_verificats_geometria": 400,
+  "possibles_duplicats": 106
+ },
+ {
+  "comarca": "Segrià",
+  "municipis_totals": 37,
+  "municipis_amb_algun_registre": 37,
+  "fonts_consultades": "OpenStreetMap/Overpass (font_cartografica)",
+  "llocs_trobats": 1738,
+  "llocs_verificats_geometria": 584,
+  "possibles_duplicats": 84
+ },
+ {
+  "comarca": "Garrigues",
+  "municipis_totals": 24,
+  "municipis_amb_algun_registre": 24,
+  "fonts_consultades": "OpenStreetMap/Overpass (font_cartografica)",
+  "llocs_trobats": 444,
+  "llocs_verificats_geometria": 256,
+  "possibles_duplicats": 22
+ },
+ {
+  "comarca": "Conca de Barberà",
+  "municipis_totals": 22,
+  "municipis_amb_algun_registre": 22,
+  "fonts_consultades": "OpenStreetMap/Overpass (font_cartografica)",
+  "llocs_trobats": 875,
+  "llocs_verificats_geometria": 487,
+  "possibles_duplicats": 147
+ }
+]

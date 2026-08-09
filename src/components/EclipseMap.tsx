@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
+interface Vote { id: number; user_id: number; rating: number }
+interface User { id: number; name: string }
 
 interface Location {
   id: number;
@@ -15,7 +19,10 @@ interface Location {
   distancia_km: number;
   proposat: boolean;
   google_maps_url: string;
+  votes: Vote[];
 }
+
+const RATING_OPTIONS = [0, 1, 2, 3, 4, 5];
 
 const proposedIcon = new L.Icon({
   iconUrl: "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#16a34a"/><circle cx="12" cy="12" r="5" fill="white"/></svg>`),
@@ -33,24 +40,98 @@ const defaultIcon = new L.Icon({
 
 export default function EclipseMap({
   locations,
+  users,
   showOnlyProposed,
   onTogglePropose,
 }: {
   locations: Location[];
+  users: User[];
   showOnlyProposed: boolean;
   onTogglePropose: (id: number, current: boolean) => void;
 }) {
   const center: [number, number] = [41.48, 0.78];
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
 
-  const visible = locations.filter((l) => !showOnlyProposed || l.proposat);
-  const faded = showOnlyProposed ? [] : locations.filter((l) => !l.proposat);
-  const proposed = locations.filter((l) => l.proposat);
+  function toggleUser(id: number) {
+    setSelectedUserIds((prev) => (prev.includes(id) ? prev.filter((u) => u !== id) : [...prev, id]));
+  }
+  function toggleRating(r: number) {
+    setSelectedRatings((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
+  }
+
+  function matchesVoteFilter(loc: Location) {
+    if (selectedUserIds.length === 0 || selectedRatings.length === 0) return true;
+    return loc.votes.some(
+      (v) => selectedUserIds.includes(v.user_id) && selectedRatings.includes(v.rating || 0)
+    );
+  }
+
+  const voteFiltered = locations.filter(matchesVoteFilter);
+  const visible = voteFiltered.filter((l) => !showOnlyProposed || l.proposat);
+  const faded = showOnlyProposed ? [] : voteFiltered.filter((l) => !l.proposat);
+  const proposed = voteFiltered.filter((l) => l.proposat);
 
   const allVisible = [...visible];
   const allMarkers = showOnlyProposed ? proposed : [...proposed, ...faded];
+  const voteFilterActive = selectedUserIds.length > 0 && selectedRatings.length > 0;
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: "500px" }}>
+    <div>
+      <div className="flex flex-wrap items-start gap-4 mb-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs">
+        <div>
+          <div className="text-gray-500 dark:text-gray-400 mb-1">Persones</div>
+          <div className="flex flex-wrap gap-1">
+            {users.map((u) => (
+              <button
+                key={u.id}
+                onClick={() => toggleUser(u.id)}
+                className={`px-2 py-0.5 rounded border ${
+                  selectedUserIds.includes(u.id)
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                }`}
+              >
+                {u.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="text-gray-500 dark:text-gray-400 mb-1">Valoracions</div>
+          <div className="flex flex-wrap gap-1">
+            {RATING_OPTIONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => toggleRating(r)}
+                className={`w-6 h-6 rounded border font-bold ${
+                  selectedRatings.includes(r)
+                    ? "bg-amber-400 text-white border-amber-400"
+                    : "bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                }`}
+                title={r === 0 ? "Sense valorar" : `${r} estrelles`}
+              >
+                {r === 0 ? "–" : r}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(selectedUserIds.length > 0 || selectedRatings.length > 0) && (
+          <button
+            onClick={() => { setSelectedUserIds([]); setSelectedRatings([]); }}
+            className="self-end text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+          >
+            Netejar filtre
+          </button>
+        )}
+        {voteFilterActive && (
+          <span className="self-end text-gray-500 dark:text-gray-400">
+            {allMarkers.length} de {locations.length} punts
+          </span>
+        )}
+      </div>
+
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: "500px" }}>
       <MapContainer center={center} zoom={10} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
@@ -92,6 +173,7 @@ export default function EclipseMap({
           </Marker>
         ))}
       </MapContainer>
+      </div>
     </div>
   );
 }

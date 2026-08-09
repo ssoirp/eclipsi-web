@@ -46,8 +46,20 @@ export async function POST(request: Request) {
       )
       RETURNING *
     `;
+    const newLocation = rows[0];
 
-    return NextResponse.json({ location: { ...rows[0], votes: [], images: [] } });
+    const { rows: users } = await sql`SELECT id FROM users`;
+    const { rows: votes } = await sql.query(
+      users.length
+        ? `INSERT INTO votes (user_id, location_id, rating)
+           VALUES ${users.map((_, i) => `($${i + 1}, $${users.length + 1}, 0)`).join(", ")}
+           ON CONFLICT (user_id, location_id) DO NOTHING
+           RETURNING id, user_id, rating`
+        : `SELECT NULL WHERE false`,
+      users.length ? [...users.map((u) => u.id), newLocation.id] : []
+    );
+
+    return NextResponse.json({ location: { ...newLocation, votes, images: [] } });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

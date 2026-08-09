@@ -37,6 +37,9 @@ export async function initDatabase() {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='descartat') THEN
         ALTER TABLE locations ADD COLUMN descartat BOOLEAN DEFAULT false;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='visible') THEN
+        ALTER TABLE locations ADD COLUMN visible BOOLEAN DEFAULT false;
+      END IF;
     END $$;
   `;
 
@@ -74,6 +77,40 @@ export async function initDatabase() {
         ALTER TABLE votes ADD COLUMN rating INTEGER DEFAULT 0;
       END IF;
     END $$;
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS espais_lleure (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      category TEXT,
+      subcategory TEXT,
+      comarca TEXT,
+      municipality TEXT,
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      picnic TEXT,
+      tables TEXT,
+      barbecue TEXT,
+      drinking_water TEXT,
+      toilets TEXT,
+      parking TEXT,
+      camping TEXT,
+      caravan TEXT,
+      accessibility TEXT,
+      bathing TEXT,
+      playground TEXT,
+      sports_area TEXT,
+      confidence_score TEXT,
+      possible_duplicate BOOLEAN DEFAULT false,
+      sources JSONB,
+      source_urls JSONB,
+      osm_id TEXT,
+      notes TEXT,
+      curation_status TEXT DEFAULT 'pending',
+      curation_updated_at TIMESTAMPTZ,
+      selected BOOLEAN DEFAULT false
+    )
   `;
 }
 

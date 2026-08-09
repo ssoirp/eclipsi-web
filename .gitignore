@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# pipeline (Python data pipeline) - regenerable artifacts
+/pipeline/venv
+/pipeline/data/raw
+/pipeline/data/processed
+/pipeline/data/pilot
+__pycache__/
+*.pyc

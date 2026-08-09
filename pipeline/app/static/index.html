@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/>
+<title>Inventari d'espais de lleure - 4 comarques</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; font-family: system-ui, sans-serif; }
+  #tabs { display:flex; background:#1b3a2f; }
+  #tabs button { flex:0 0 auto; padding:12px 20px; background:none; border:none; color:#cfe8dc; font-size:14px; cursor:pointer; }
+  #tabs button.active { background:#0f241c; color:#fff; font-weight:600; }
+  .view { display:none; height: calc(100vh - 44px); }
+  .view.active { display:flex; }
+
+  #sidebar { width:270px; padding:12px; overflow-y:auto; background:#fafafa; border-right:1px solid #ddd; }
+  #map-general { flex:1; }
+
+  #curacio-filters { width:100%; padding:8px 12px; background:#f2f2f2; border-bottom:1px solid #ddd; display:flex; gap:12px; flex-wrap:wrap; align-items:center; font-size:12px; }
+  #curacio-body { display:flex; flex:1; min-height:0; }
+  #map-curacio { flex:1.1; }
+  #list-curacio { flex:1; overflow-y:auto; border-left:1px solid #ddd; background:#fff; }
+
+  fieldset { border:1px solid #ddd; border-radius:6px; margin-bottom:10px; padding:8px; }
+  legend { font-size:12px; font-weight:600; color:#333; padding:0 4px; }
+  label { display:block; font-size:12px; margin:3px 0; cursor:pointer; }
+  select { padding:4px; font-size:12px; }
+  .legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; }
+  .popup-table td { font-size:11px; padding:1px 4px; vertical-align:top; }
+  .badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:10px; color:#fff; }
+
+  .item { padding:8px 10px; border-bottom:1px solid #eee; cursor:pointer; font-size:12px; }
+  .item:hover { background:#f5f9f7; }
+  .item.highlighted { background:#e3f2e9; border-left:3px solid #2e7d32; }
+  .item .name { font-weight:600; font-size:13px; }
+  .item .meta { color:#666; font-size:11px; }
+  .item .actions { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+  .btn { border:1px solid #ccc; background:#fff; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; }
+  .btn.on-interesting { background:#2e7d32; color:#fff; border-color:#2e7d32; }
+  .btn.on-not_interesting { background:#c62828; color:#fff; border-color:#c62828; }
+  .btn.on-selected { background:#f9a825; color:#fff; border-color:#f9a825; }
+  #countCuracio { font-size:12px; padding:6px 12px; color:#555; }
+</style>
+</head>
+<body>
+
+<div id="tabs">
+  <button class="tab-btn active" data-view="general">Mapa general</button>
+  <button class="tab-btn" data-view="curacio">Curació</button>
+</div>
+
+<!-- ===================== VISTA 1: MAPA GENERAL ===================== -->
+<div id="view-general" class="view active">
+  <div id="sidebar">
+    <h3 style="font-size:14px">Filtres</h3>
+    <fieldset>
+      <legend>Comarca</legend>
+      <select id="g-comarca"><option value="">Totes</option></select>
+    </fieldset>
+    <fieldset>
+      <legend>Municipi</legend>
+      <select id="g-municipi"><option value="">Tots</option></select>
+    </fieldset>
+    <fieldset id="g-cat-fieldset"><legend>Categoria</legend></fieldset>
+    <div id="g-count" style="font-size:12px;color:#555;"></div>
+  </div>
+  <div id="map-general"></div>
+</div>
+
+<!-- ===================== VISTA 2: CURACIO ===================== -->
+<div id="view-curacio" class="view">
+  <div style="display:flex; flex-direction:column; flex:1; min-height:0;">
+    <div id="curacio-filters">
+      <label>Comarca
+        <select id="c-comarca"><option value="">Totes</option></select>
+      </label>
+      <label>Municipi
+        <select id="c-municipi"><option value="">Tots</option></select>
+      </label>
+      <label>Categoria
+        <select id="c-categoria"><option value="">Totes</option></select>
+      </label>
+      <label>Estat
+        <select id="c-status">
+          <option value="">Tots</option>
+          <option value="pending">Pendents</option>
+          <option value="interesting">M'interessa</option>
+          <option value="not_interesting">No m'interessa</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="c-selected-only"/> Nomes seleccionats</label>
+      <span id="countCuracio"></span>
+    </div>
+    <div id="curacio-body">
+      <div id="map-curacio"></div>
+      <div id="list-curacio"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORY_META = {
+  espai_lleure: {color:'#2e7d32', label:'Espai de lleure'},
+  acampada: {color:'#1565c0', label:'Acampada / turisme'},
+  patrimoni: {color:'#8e24aa', label:'Patrimoni'},
+  servei_puntual: {color:'#757575', label:'Servei puntual'},
+  desconegut: {color:'#424242', label:'Desconegut'},
+};
+
+let ALL_DATA = [];
+let FACETS = {comarques:[], municipis:[], categories:[]};
+
+async function loadAll() {
+  const [dataRes, facetsRes] = await Promise.all([
+    fetch('/api/records'), fetch('/api/facets')
+  ]);
+  ALL_DATA = await dataRes.json();
+  FACETS = await facetsRes.json();
+}
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.view).classList.add('active');
+    if (btn.dataset.view === 'general') setTimeout(()=>mapGeneral.invalidateSize(), 50);
+    if (btn.dataset.view === 'curacio') setTimeout(()=>mapCuracio.invalidateSize(), 50);
+  });
+});
+
+// ---------- VISTA GENERAL ----------
+const mapGeneral = L.map('map-general').setView([41.4, 0.9], 9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap contributors', maxZoom:19}).addTo(mapGeneral);
+let markersGeneral = L.layerGroup().addTo(mapGeneral);
+
+function popupHtml(r) {
+  const eqRow = (label, val) => val === 'yes' ? `<tr><td>${label}</td><td><span class="badge" style="background:#2e7d32">si</span></td></tr>` :
+                val === 'no' ? `<tr><td>${label}</td><td><span class="badge" style="background:#c62828">no</span></td></tr>` :
+                `<tr><td>${label}</td><td><span class="badge" style="background:#999">desconegut</span></td></tr>`;
+  const sources = (r.sources || []).join(', ') || 'desconegut';
+  const links = (r.source_urls || []).map(u => `<a href="${u}" target="_blank">font</a>`).join(' ');
+  const dupBadge = r.possible_duplicate ? '<span class="badge" style="background:#ef6c00">possible duplicat</span>' : '';
+  return `<div style="min-width:220px">
+    <b>${r.name || '(sense nom)'}</b> ${dupBadge}<br/>
+    <small>${(CATEGORY_META[r.category]||{}).label || r.category} / ${r.subcategory}</small><br/>
+    <small>${r.municipality}, ${r.comarca}</small><br/>
+    <small>${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}</small>
+    <table class="popup-table">
+      ${eqRow('Taules', r.tables)}${eqRow('Barbacoa', r.barbecue)}${eqRow('Font/aigua', r.drinking_water)}
+      ${eqRow('WC', r.toilets)}${eqRow('Aparcament', r.parking)}${eqRow('Acampada', r.camping)}${eqRow('Accessibilitat', r.accessibility)}
+    </table>
+    <small>Confiança: <b>${r.confidence_score}</b> | Font: ${sources} ${links}</small><br/>
+    <small>ID: ${r.id} ${r.osm_id ? '| OSM: '+r.osm_id : ''}</small>
+  </div>`;
+}
+
+function fillSelect(sel, values, keepFirst=true) {
+  const first = keepFirst ? sel.firstElementChild.outerHTML : '';
+  sel.innerHTML = first;
+  values.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+}
+
+function setupGeneral() {
+  fillSelect(document.getElementById('g-comarca'), FACETS.comarques);
+  fillSelect(document.getElementById('g-municipi'), FACETS.municipis);
+  const catFs = document.getElementById('g-cat-fieldset');
+  FACETS.categories.forEach(cat => {
+    const meta = CATEGORY_META[cat] || {color:'#888', label:cat};
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" data-cat="${cat}" checked/> <span class="legend-dot" style="background:${meta.color}"></span>${meta.label}`;
+    catFs.appendChild(label);
+  });
+  document.getElementById('g-comarca').addEventListener('change', applyGeneralFilters);
+  document.getElementById('g-municipi').addEventListener('change', applyGeneralFilters);
+  catFs.addEventListener('change', applyGeneralFilters);
+  applyGeneralFilters();
+}
+
+function applyGeneralFilters() {
+  const comarca = document.getElementById('g-comarca').value;
+  const municipi = document.getElementById('g-municipi').value;
+  const activeCats = [...document.querySelectorAll('#g-cat-fieldset input[data-cat]')].filter(i=>i.checked).map(i=>i.dataset.cat);
+  markersGeneral.clearLayers();
+  let count = 0;
+  ALL_DATA.forEach(r => {
+    if (comarca && r.comarca !== comarca) return;
+    if (municipi && r.municipality !== municipi) return;
+    if (!activeCats.includes(r.category)) return;
+    const meta = CATEGORY_META[r.category] || {color:'#888'};
+    const marker = L.circleMarker([r.latitude, r.longitude], {radius:5, color:meta.color, fillColor:meta.color, fillOpacity:0.8, weight:1});
+    marker.bindPopup(popupHtml(r));
+    markersGeneral.addLayer(marker);
+    count++;
+  });
+  document.getElementById('g-count').textContent = count + ' llocs mostrats de ' + ALL_DATA.length + ' totals';
+}
+
+// ---------- VISTA CURACIO ----------
+const mapCuracio = L.map('map-curacio').setView([41.4, 0.9], 9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'&copy; OpenStreetMap contributors', maxZoom:19}).addTo(mapCuracio);
+let curMarkersById = {};
+let curMarkerLayer = L.layerGroup().addTo(mapCuracio);
+let curFilteredData = [];
+let curSelectedId = null;
+
+function statusColor(r) {
+  if (r.selected) return '#f9a825';
+  if (r.curation_status === 'interesting') return '#2e7d32';
+  if (r.curation_status === 'not_interesting') return '#c62828';
+  return (CATEGORY_META[r.category]||{}).color || '#888';
+}
+
+function setupCuracio() {
+  fillSelect(document.getElementById('c-comarca'), FACETS.comarques);
+  fillSelect(document.getElementById('c-municipi'), FACETS.municipis);
+  fillSelect(document.getElementById('c-categoria'), FACETS.categories.map(c => (CATEGORY_META[c]||{}).label || c));
+  // reconstruim categoria select amb value=codi, text=label
+  const catSel = document.getElementById('c-categoria');
+  catSel.innerHTML = '<option value="">Totes</option>';
+  FACETS.categories.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=(CATEGORY_META[c]||{}).label||c; catSel.appendChild(o); });
+
+  ['c-comarca','c-municipi','c-categoria','c-status'].forEach(id => document.getElementById(id).addEventListener('change', renderCuracio));
+  document.getElementById('c-selected-only').addEventListener('change', renderCuracio);
+  renderCuracio();
+}
+
+function renderCuracio() {
+  const comarca = document.getElementById('c-comarca').value;
+  const municipi = document.getElementById('c-municipi').value;
+  const categoria = document.getElementById('c-categoria').value;
+  const status = document.getElementById('c-status').value;
+  const selectedOnly = document.getElementById('c-selected-only').checked;
+
+  curFilteredData = ALL_DATA.filter(r => {
+    if (comarca && r.comarca !== comarca) return false;
+    if (municipi && r.municipality !== municipi) return false;
+    if (categoria && r.category !== categoria) return false;
+    if (status && r.curation_status !== status) return false;
+    if (selectedOnly && !r.selected) return false;
+    return true;
+  });
+
+  curMarkerLayer.clearLayers();
+  curMarkersById = {};
+  curFilteredData.forEach(r => {
+    const color = statusColor(r);
+    const marker = L.circleMarker([r.latitude, r.longitude], {radius:6, color, fillColor:color, fillOpacity:0.85, weight:1});
+    marker.on('click', () => selectItem(r.id, true));
+    curMarkerLayer.addLayer(marker);
+    curMarkersById[r.id] = marker;
+  });
+
+  const listEl = document.getElementById('list-curacio');
+  listEl.innerHTML = '';
+  curFilteredData.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.id = 'item-' + r.id;
+    div.innerHTML = `
+      <div class="name">${r.name || '(sense nom)'} ${r.selected ? '★' : ''}</div>
+      <div class="meta">${(CATEGORY_META[r.category]||{}).label||r.category} / ${r.subcategory} — ${r.municipality}, ${r.comarca}</div>
+      <div class="actions">
+        <button class="btn ${r.curation_status==='interesting'?'on-interesting':''}" data-act="interesting">M'interessa</button>
+        <button class="btn ${r.curation_status==='not_interesting'?'on-not_interesting':''}" data-act="not_interesting">No m'interessa</button>
+        <button class="btn ${r.curation_status==='pending'?'':''}" data-act="pending">Pendent</button>
+        <button class="btn ${r.selected?'on-selected':''}" data-act="toggle-selected">${r.selected ? '★ Seleccionat' : '☆ Seleccionar'}</button>
+      </div>`;
+    div.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      selectItem(r.id, false);
+    });
+    div.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        if (act === 'toggle-selected') {
+          await setSelected(r, !r.selected);
+        } else {
+          await setCurationStatus(r, act);
+        }
+      });
+    });
+    listEl.appendChild(div);
+  });
+
+  document.getElementById('countCuracio').textContent = curFilteredData.length + ' de ' + ALL_DATA.length + ' llocs';
+}
+
+function selectItem(id, fromMap) {
+  document.querySelectorAll('.item').forEach(el => el.classList.remove('highlighted'));
+  const itemEl = document.getElementById('item-' + id);
+  if (itemEl) {
+    itemEl.classList.add('highlighted');
+    itemEl.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  const marker = curMarkersById[id];
+  if (marker) {
+    if (!fromMap) mapCuracio.panTo(marker.getLatLng());
+    marker.openPopup();
+  }
+  const r = curFilteredData.find(x => x.id === id);
+  if (r && marker && !marker.getPopup()) marker.bindPopup(popupHtml(r));
+  if (marker) { marker.bindPopup(popupHtml(r)); marker.openPopup(); }
+  curSelectedId = id;
+}
+
+async function setCurationStatus(r, status) {
+  const res = await fetch(`/api/records/${r.id}/curation`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({status}),
+  });
+  if (res.ok) {
+    r.curation_status = status;
+    r.curation_updated_at = new Date().toISOString();
+    const marker = curMarkersById[r.id];
+    if (marker) { const c = statusColor(r); marker.setStyle({color:c, fillColor:c}); }
+    renderCuracio();
+    setTimeout(()=>selectItem(r.id, false), 0);
+  } else {
+    alert('Error desant el canvi');
+  }
+}
+
+async function setSelected(r, selected) {
+  const res = await fetch(`/api/records/${r.id}/selected`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({selected}),
+  });
+  if (res.ok) {
+    r.selected = selected;
+    const marker = curMarkersById[r.id];
+    if (marker) { const c = statusColor(r); marker.setStyle({color:c, fillColor:c}); }
+    renderCuracio();
+    setTimeout(()=>selectItem(r.id, false), 0);
+  } else {
+    alert('Error desant el canvi');
+  }
+}
+
+(async function init() {
+  await loadAll();
+  setupGeneral();
+  setupCuracio();
+})();
+</script>
+</body>
+</html>

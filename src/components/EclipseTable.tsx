@@ -13,7 +13,7 @@ interface Location {
   maxim_eclipsi: string; final_totalitat: string; final_eclipsi: string;
   durada_totalitat_s: number; magnitud: number; obscuracio: string;
   distancia_km: number; distancia_min: number; latitud: number; longitud: number;
-  google_maps_url: string; proposat: boolean; descartat: boolean;
+  google_maps_url: string; proposat: boolean; descartat: boolean; visible: boolean;
   notes: string; tipus_entorn: string; votes: Vote[]; images: ImageRecord[];
 }
 interface User { id: number; name: string; is_admin: boolean }
@@ -116,6 +116,10 @@ export default function EclipseTable() {
       setLocations((prev) => prev.map((loc) => loc.id === locationId ? { ...loc, proposat: false } : loc));
     }
   };
+  const toggleVisible = async (locationId: number, current: boolean) => {
+    await updateField(locationId, "visible", !current);
+    setLocations((prev) => prev.map((loc) => loc.id === locationId ? { ...loc, visible: !current } : loc));
+  };
   const uploadImage = async (locationId: number, file: File) => {
     const fd = new FormData(); fd.append("file", file); fd.append("location_id", String(locationId));
     await fetch("/api/images", { method: "POST", body: fd });
@@ -181,6 +185,7 @@ export default function EclipseTable() {
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={showOnlyProposed} onChange={() => setShowOnlyProposed(!showOnlyProposed)} className="rounded" />Només proposats</label>
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={hideDiscarded} onChange={() => setHideDiscarded(!hideDiscarded)} className="rounded" />Amagar descartats</label>
         <span className="text-sm text-gray-400">{sorted.length}/{locations.length}</span>
+        <span className="text-xs text-gray-400">P=Proposar · D=Descartar · 👁=Visible a la Mostra pública</span>
         <button onClick={() => { setShowAddForm(true); setAddError(null); }}
           className="ml-auto px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600">
           + Afegir punt
@@ -211,7 +216,7 @@ export default function EclipseTable() {
       )}
 
       {viewMode === "map" ? (
-        <EclipseMap locations={locations} showOnlyProposed={showOnlyProposed} onTogglePropose={togglePropose} />
+        <EclipseMap locations={locations} users={users} showOnlyProposed={showOnlyProposed} onTogglePropose={togglePropose} />
       ) : (
         <div className="space-y-2">
           {sorted.map((loc) => {
@@ -253,6 +258,11 @@ export default function EclipseTable() {
                         className={`w-6 h-6 rounded-md text-xs font-bold shrink-0 ${loc.descartat ? "bg-red-500 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-400 hover:bg-red-100"}`}
                         title={loc.descartat ? "Recuperar" : "Descartar"}>
                         {loc.descartat ? "✗" : "D"}
+                      </button>
+                      <button onClick={() => toggleVisible(loc.id, loc.visible)}
+                        className={`w-6 h-6 rounded-md text-xs font-bold shrink-0 ${loc.visible ? "bg-blue-500 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-400 hover:bg-blue-100"}`}
+                        title={loc.visible ? "Visible a la Mostra pública (clic per amagar)" : "Amagat de la Mostra pública (clic per mostrar)"}>
+                        {loc.visible ? "👁" : "—"}
                       </button>
 
                       {/* Name */}
