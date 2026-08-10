@@ -22,8 +22,15 @@ export default function LocationCard({
   return (
     <div
       onClick={onOpen}
-      className="cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm hover:shadow-xl transition-shadow"
+      className={`relative cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm hover:shadow-xl transition-shadow ${
+        loc.descartat ? "grayscale opacity-60 hover:opacity-90" : ""
+      }`}
     >
+      {loc.descartat && (
+        <span className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-full tracking-wide shadow">
+          DESCARTAT
+        </span>
+      )}
       <div className="relative aspect-[4/3] bg-gray-100 dark:bg-gray-800">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -46,7 +53,7 @@ export default function LocationCard({
           {entornLabel(loc.tipus_entorn)}
         </span>
         {avg > 0 && (
-          <span className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/60 text-white text-base font-bold px-2.5 py-1 rounded-full">
+          <span className="absolute bottom-3 right-3 z-10 flex items-center gap-1 bg-black/80 text-white text-base font-bold px-2.5 py-1 rounded-full shadow">
             <span className="text-amber-400">★</span>
             {avg.toFixed(1)}
           </span>

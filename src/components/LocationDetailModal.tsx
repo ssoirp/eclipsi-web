@@ -86,9 +86,16 @@ export default function LocationDetailModal({
               <h2 className="text-xl font-bold">{displayName(loc)}</h2>
               {loc.municipi && <div className="text-gray-500">{loc.municipi}</div>}
             </div>
-            <span className="bg-gray-100 dark:bg-gray-800 text-sm px-3 py-1 rounded-full font-medium">
-              {entornLabel(loc.tipus_entorn)}
-            </span>
+            <div className="flex items-center gap-2">
+              {loc.descartat && (
+                <span className="bg-red-600 text-white text-sm px-3 py-1 rounded-full font-bold tracking-wide">
+                  DESCARTAT
+                </span>
+              )}
+              <span className="bg-gray-100 dark:bg-gray-800 text-sm px-3 py-1 rounded-full font-medium">
+                {entornLabel(loc.tipus_entorn)}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm">
@@ -103,31 +110,35 @@ export default function LocationDetailModal({
             {loc.posta_sol && <Stat label="Posta de sol" value={loc.posta_sol} />}
           </div>
 
-          {users.length > 0 && (
-            <div className="mt-5">
-              <div className="text-sm font-semibold text-gray-500 mb-2">Valoracions</div>
-              <div className="space-y-1.5">
-                {users.map((u) => {
-                  const rating = loc.votes.find((v) => v.user_id === u.id)?.rating || 0;
-                  return (
-                    <div key={u.id} className="flex items-center gap-2">
-                      <span className="text-xs w-24 truncate text-gray-500">{u.name}</span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <span key={n} className={`w-4 h-4 rounded-sm ${n <= rating ? "bg-amber-400" : "bg-gray-200 dark:bg-gray-700"}`} />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {(users.length > 0 || loc.notes) && (
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {users.length > 0 && (
+                <div>
+                  <div className="text-sm font-semibold text-gray-500 mb-2">Valoracions</div>
+                  <div className="space-y-1.5">
+                    {users.map((u) => {
+                      const rating = loc.votes.find((v) => v.user_id === u.id)?.rating || 0;
+                      return (
+                        <div key={u.id} className="flex items-center gap-2">
+                          <span className="text-xs w-24 truncate text-gray-500">{u.name}</span>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <span key={n} className={`w-4 h-4 rounded-sm ${n <= rating ? "bg-amber-400" : "bg-gray-200 dark:bg-gray-700"}`} />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-          {loc.notes && (
-            <div className="mt-5">
-              <div className="text-sm font-semibold text-gray-500 mb-1">Notes</div>
-              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{loc.notes}</p>
+              {loc.notes && (
+                <div>
+                  <div className="text-sm font-semibold text-gray-500 mb-1">Notes</div>
+                  <p className="text-lg text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-snug">{loc.notes}</p>
+                </div>
+              )}
             </div>
           )}
 

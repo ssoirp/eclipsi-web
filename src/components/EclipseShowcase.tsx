@@ -24,7 +24,7 @@ export default function EclipseShowcase() {
     async function load() {
       const res = await fetch("/api/locations");
       const data = await res.json();
-      setLocations((data.locations || []).filter((l: ShowcaseLocation) => l.visible && !l.descartat));
+      setLocations((data.locations || []).filter((l: ShowcaseLocation) => l.visible));
       setUsers(data.users || []);
       setLoading(false);
     }
