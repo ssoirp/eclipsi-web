@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import sharp from "sharp";
+import heicConvert from "heic-convert";
 import { sql } from "@/lib/db";
+
+const HEIC_PATTERN = /\.(heic|heif)$/i;
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +16,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing file or location_id" }, { status: 400 });
     }
 
-    const inputBuffer = Buffer.from(await file.arrayBuffer());
+    let inputBuffer = Buffer.from(await file.arrayBuffer());
+    if (HEIC_PATTERN.test(file.name) || file.type === "image/heic" || file.type === "image/heif") {
+      const jpegArrayBuffer = await heicConvert({
+        buffer: inputBuffer,
+        format: "JPEG",
+        quality: 0.9,
+      });
+      inputBuffer = Buffer.from(jpegArrayBuffer);
+    }
+
     const webpBuffer = await sharp(inputBuffer)
       .rotate()
       .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
