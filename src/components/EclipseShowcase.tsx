@@ -4,16 +4,11 @@ import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import LocationCard from "./LocationCard";
 import LocationDetailModal from "./LocationDetailModal";
-import { ShowcaseLocation, ShowcaseUser, entornLabel } from "./showcaseTypes";
+import { ShowcaseLocation, ShowcaseUser, entornLabel, avgRating } from "./showcaseTypes";
 
 const EclipseShowcaseMap = dynamic(() => import("./EclipseShowcaseMap"), { ssr: false });
 
 type SortKey = "none" | "valoracio" | "trajecte" | "eclipsi";
-
-function avgRating(loc: ShowcaseLocation): number {
-  if (!loc.votes.length) return 0;
-  return loc.votes.reduce((s, v) => s + (v.rating || 0), 0) / loc.votes.length;
-}
 
 export default function EclipseShowcase() {
   const [locations, setLocations] = useState<ShowcaseLocation[]>([]);
@@ -121,7 +116,7 @@ export default function EclipseShowcase() {
       {sorted.length === 0 ? (
         <div className="text-center py-16 text-gray-400">Encara no hi ha punts publicats amb aquest filtre.</div>
       ) : viewMode === "fitxes" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {sorted.map((loc) => (
             <LocationCard key={loc.id} loc={loc} onOpen={() => setSelected(loc)} />
           ))}

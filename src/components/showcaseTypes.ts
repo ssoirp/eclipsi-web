@@ -44,3 +44,8 @@ export function entornLabel(tipus: string) {
   if (!tipus) return "Sense classificar";
   return ENTORN_LABELS[tipus] || tipus;
 }
+
+export function avgRating(loc: { votes: ShowcaseVote[] }): number {
+  if (!loc.votes.length) return 0;
+  return loc.votes.reduce((s, v) => s + (v.rating || 0), 0) / loc.votes.length;
+}
