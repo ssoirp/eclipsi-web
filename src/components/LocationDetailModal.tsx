@@ -25,7 +25,7 @@ export default function LocationDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -63,6 +63,23 @@ export default function LocationDetailModal({
           </button>
         </div>
 
+        {images.length > 1 && (
+          <div className="flex gap-2 p-3 overflow-x-auto bg-gray-50 dark:bg-gray-800/50">
+            {images.map((img, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={img.id}
+                src={img.url}
+                alt=""
+                onClick={() => setImgIndex(i)}
+                className={`w-16 h-16 object-cover rounded-lg cursor-pointer shrink-0 border-2 ${
+                  i === imgIndex ? "border-blue-500" : "border-transparent opacity-70 hover:opacity-100"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
         <div className="p-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
@@ -77,8 +94,13 @@ export default function LocationDetailModal({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm">
             <Stat label="Distància" value={`${loc.distancia_km} km`} />
             <Stat label="Temps en cotxe" value={`${loc.distancia_min} min`} />
-            <Stat label="Inici totalitat" value={loc.inici_totalitat} />
             <Stat label="Durada totalitat" value={`${loc.durada_totalitat_s}s`} />
+            <Stat label="Magnitud" value={Number(loc.magnitud).toFixed(4)} />
+            <Stat label="Inici eclipsi" value={loc.inici_eclipsi} />
+            <Stat label="Inici totalitat" value={loc.inici_totalitat} />
+            <Stat label="Final totalitat" value={loc.final_totalitat} />
+            <Stat label="Final eclipsi" value={loc.final_eclipsi} />
+            {loc.posta_sol && <Stat label="Posta de sol" value={loc.posta_sol} />}
           </div>
 
           {users.length > 0 && (

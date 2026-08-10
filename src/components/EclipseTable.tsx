@@ -33,7 +33,7 @@ export default function EclipseTable() {
   const [editing, setEditing] = useState<{ id: number; field: string } | null>(null);
   const [showOnlyProposed, setShowOnlyProposed] = useState(false);
   const [hideDiscarded, setHideDiscarded] = useState(false);
-  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ images: ImageRecord[]; index: number } | null>(null);
   const [viewMode, setViewMode] = useState<"cards" | "map">("cards");
   const [showAddForm, setShowAddForm] = useState(false);
   const [addingPoint, setAddingPoint] = useState(false);
@@ -123,6 +123,9 @@ export default function EclipseTable() {
   const uploadImage = async (locationId: number, file: File) => {
     const fd = new FormData(); fd.append("file", file); fd.append("location_id", String(locationId));
     await fetch("/api/images", { method: "POST", body: fd });
+  };
+  const uploadImages = async (locationId: number, files: FileList) => {
+    await Promise.all(Array.from(files).map((f) => uploadImage(locationId, f)));
     await fetchData();
   };
   const deleteImage = async (id: number, url: string) => {
@@ -170,9 +173,33 @@ export default function EclipseTable() {
 
   return (
     <div>
-      {lightboxImg && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center cursor-pointer p-4" onClick={() => setLightboxImg(null)}>
-          <img src={lightboxImg} alt="" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl" />
+      {lightbox && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <img src={lightbox.images[lightbox.index].url} alt="" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          {lightbox.images.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index - 1 + lightbox.images.length) % lightbox.images.length }); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 text-xl"
+              >
+                ‹
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: (lightbox.index + 1) % lightbox.images.length }); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/30 text-xl"
+              >
+                ›
+              </button>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {lightbox.images.map((_, i) => (
+                  <span key={i} className={`w-2 h-2 rounded-full ${i === lightbox.index ? "bg-white" : "bg-white/40"}`} />
+                ))}
+              </div>
+            </>
+          )}
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 bg-white/20 text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/30">
+            ✕
+          </button>
         </div>
       )}
 
@@ -227,22 +254,20 @@ export default function EclipseTable() {
             return (
               <div key={loc.id} className={`border ${borderColor} ${bgColor} rounded-lg p-3 ${loc.descartat ? "opacity-50" : ""}`}>
                 {/* Row 1: Name + status + image */}
-                <div className="flex gap-3 items-start">
-                  {/* Image column */}
-                  <div className="shrink-0">
-                    {loc.images?.[0] ? (
-                      <div className="relative group">
-                        <img src={loc.images[0].url} alt="" className="w-16 h-16 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-600 hover:opacity-80"
-                          onClick={() => setLightboxImg(loc.images[0].url)} />
-                        {loc.images.length > 1 && <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{loc.images.length}</span>}
-                        <button onClick={() => deleteImage(loc.images[0].id, loc.images[0].url)} className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full hidden group-hover:flex items-center justify-center">x</button>
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                  {/* Image thumbnails */}
+                  <div className="shrink-0 flex gap-1.5 flex-wrap w-full sm:w-auto sm:max-w-[220px]">
+                    {(loc.images || []).map((img, i) => (
+                      <div key={img.id} className="relative group">
+                        <img src={img.url} alt="" className="w-16 h-16 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-600 hover:opacity-80"
+                          onClick={() => setLightbox({ images: loc.images, index: i })} />
+                        <button onClick={() => deleteImage(img.id, img.url)} className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center shadow">x</button>
                       </div>
-                    ) : (
-                      <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
-                        <span className="text-gray-400 text-xl">+</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(loc.id, f); }} />
-                      </label>
-                    )}
+                    ))}
+                    <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
+                      <span className="text-gray-400 text-xl">+</span>
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { const f = e.target.files; if (f && f.length) uploadImages(loc.id, f); }} />
+                    </label>
                   </div>
 
                   {/* Name + meta */}

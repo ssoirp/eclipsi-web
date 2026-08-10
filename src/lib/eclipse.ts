@@ -62,6 +62,13 @@ export function computeEclipseLocal(lat: number, lon: number): EclipseInfo {
   };
 }
 
+export function computeSunset(lat: number, lon: number): string {
+  const observer = new Astronomy.Observer(lat, lon, 0);
+  const startTime = Astronomy.MakeTime(new Date(ECLIPSE_SEARCH_START_UTC));
+  const sunset = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, startTime, 1);
+  return sunset ? fmtTime(sunset.date) : "";
+}
+
 export function mapsLink(lat: number, lon: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lon.toFixed(6)}`;
 }

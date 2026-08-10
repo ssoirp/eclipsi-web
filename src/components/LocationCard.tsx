@@ -49,9 +49,13 @@ export default function LocationCard({
         <div className="font-semibold text-base truncate">{displayName(loc)}</div>
         {loc.municipi && <div className="text-sm text-gray-500 truncate">{loc.municipi}</div>}
         <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-          <span>{loc.distancia_km} km</span>
+          <span>{loc.distancia_min} min en cotxe</span>
           <span>·</span>
           <span>{loc.durada_totalitat_s}s de totalitat</span>
+        </div>
+        <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+          <span title="Inici - final eclipsi">🌘 {loc.inici_eclipsi}–{loc.final_eclipsi}</span>
+          {loc.posta_sol && <span title="Posta de sol">🌅 {loc.posta_sol}</span>}
         </div>
       </div>
     </div>

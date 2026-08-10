@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 const ALLOWED_FIELDS = [
   "distancia_km", "distancia_min", "inici_eclipsi", "inici_totalitat",
   "maxim_eclipsi", "final_totalitat", "final_eclipsi", "durada_totalitat_s",
-  "magnitud", "obscuracio", "municipi", "descartat", "tipus_eclipsi", "visible",
+  "magnitud", "obscuracio", "municipi", "descartat", "tipus_eclipsi", "visible", "posta_sol",
 ];
 
 export async function PUT(request: Request) {

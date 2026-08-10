@@ -8,6 +8,13 @@ import { ShowcaseLocation, ShowcaseUser, entornLabel } from "./showcaseTypes";
 
 const EclipseShowcaseMap = dynamic(() => import("./EclipseShowcaseMap"), { ssr: false });
 
+type SortKey = "none" | "valoracio" | "trajecte" | "eclipsi";
+
+function avgRating(loc: ShowcaseLocation): number {
+  if (!loc.votes.length) return 0;
+  return loc.votes.reduce((s, v) => s + (v.rating || 0), 0) / loc.votes.length;
+}
+
 export default function EclipseShowcase() {
   const [locations, setLocations] = useState<ShowcaseLocation[]>([]);
   const [users, setUsers] = useState<ShowcaseUser[]>([]);
@@ -15,6 +22,8 @@ export default function EclipseShowcase() {
   const [viewMode, setViewMode] = useState<"fitxes" | "mapa">("fitxes");
   const [entornFilter, setEntornFilter] = useState<string[]>([]);
   const [selected, setSelected] = useState<ShowcaseLocation | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("none");
+  const [sortAsc, setSortAsc] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -37,6 +46,24 @@ export default function EclipseShowcase() {
   }
 
   const filtered = locations.filter((l) => entornFilter.length === 0 || entornFilter.includes(l.tipus_entorn));
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortKey === "none") return 0;
+    let av: number, bv: number;
+    if (sortKey === "valoracio") { av = avgRating(a); bv = avgRating(b); }
+    else if (sortKey === "trajecte") { av = a.distancia_min; bv = b.distancia_min; }
+    else { av = a.durada_totalitat_s; bv = b.durada_totalitat_s; }
+    return sortAsc ? av - bv : bv - av;
+  });
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortAsc((prev) => !prev);
+    } else {
+      setSortKey(key);
+      setSortAsc(false);
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-16 text-gray-400">Carregant...</div>;
@@ -81,22 +108,42 @@ export default function EclipseShowcase() {
           )}
         </div>
 
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-gray-400 mr-1">Ordenar:</span>
+          <SortBtn label="Valoració" active={sortKey === "valoracio"} asc={sortAsc} onClick={() => toggleSort("valoracio")} />
+          <SortBtn label="Temps de trajecte" active={sortKey === "trajecte"} asc={sortAsc} onClick={() => toggleSort("trajecte")} />
+          <SortBtn label="Durada eclipsi" active={sortKey === "eclipsi"} asc={sortAsc} onClick={() => toggleSort("eclipsi")} />
+        </div>
+
         <span className="text-sm text-gray-400 ml-auto">{filtered.length} llocs</span>
       </div>
 
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="text-center py-16 text-gray-400">Encara no hi ha punts publicats amb aquest filtre.</div>
       ) : viewMode === "fitxes" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((loc) => (
+          {sorted.map((loc) => (
             <LocationCard key={loc.id} loc={loc} onOpen={() => setSelected(loc)} />
           ))}
         </div>
       ) : (
-        <EclipseShowcaseMap locations={filtered} onOpen={setSelected} />
+        <EclipseShowcaseMap locations={sorted} onOpen={setSelected} />
       )}
 
       {selected && <LocationDetailModal loc={selected} users={users} onClose={() => setSelected(null)} />}
     </div>
+  );
+}
+
+function SortBtn({ label, active, asc, onClick }: { label: string; active: boolean; asc: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2.5 py-1 rounded text-sm transition-colors ${
+        active ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+      }`}
+    >
+      {label} {active ? (asc ? "↑" : "↓") : ""}
+    </button>
   );
 }

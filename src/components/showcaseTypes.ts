@@ -8,8 +8,12 @@ export interface ShowcaseLocation {
   custom_name: string | null;
   municipi: string;
   tipus_eclipsi: string;
+  inici_eclipsi: string;
   inici_totalitat: string;
+  maxim_eclipsi: string;
   final_totalitat: string;
+  final_eclipsi: string;
+  posta_sol: string;
   durada_totalitat_s: number;
   magnitud: number;
   distancia_km: number;

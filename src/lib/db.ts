@@ -40,6 +40,9 @@ export async function initDatabase() {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='visible') THEN
         ALTER TABLE locations ADD COLUMN visible BOOLEAN DEFAULT false;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='locations' AND column_name='posta_sol') THEN
+        ALTER TABLE locations ADD COLUMN posta_sol TEXT DEFAULT '';
+      END IF;
     END $$;
   `;
 

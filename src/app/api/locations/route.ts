@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { geocodePlace } from "@/lib/geocode";
-import { computeEclipseLocal, drivingDistanceFromAgramunt, mapsLink } from "@/lib/eclipse";
+import { computeEclipseLocal, computeSunset, drivingDistanceFromAgramunt, mapsLink } from "@/lib/eclipse";
 
 export async function POST(request: Request) {
   try {
@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     }
 
     const eclipse = computeEclipseLocal(latitud, longitud);
+    const postaSol = computeSunset(latitud, longitud);
     const { distancia_km, distancia_min } = await drivingDistanceFromAgramunt(latitud, longitud);
     const googleMapsUrl = mapsLink(latitud, longitud);
 
@@ -37,12 +38,12 @@ export async function POST(request: Request) {
         nom, latitud, longitud, municipi,
         tipus_eclipsi, inici_eclipsi, inici_totalitat, maxim_eclipsi,
         final_totalitat, final_eclipsi, durada_totalitat_s, magnitud, obscuracio,
-        distancia_km, distancia_min, google_maps_url
+        distancia_km, distancia_min, google_maps_url, posta_sol
       ) VALUES (
         ${nom}, ${latitud}, ${longitud}, ${municipi},
         ${eclipse.tipus_eclipsi}, ${eclipse.inici_eclipsi}, ${eclipse.inici_totalitat}, ${eclipse.maxim_eclipsi},
         ${eclipse.final_totalitat}, ${eclipse.final_eclipsi}, ${eclipse.durada_totalitat_s}, ${eclipse.magnitud}, ${eclipse.obscuracio},
-        ${distancia_km}, ${distancia_min}, ${googleMapsUrl}
+        ${distancia_km}, ${distancia_min}, ${googleMapsUrl}, ${postaSol}
       )
       RETURNING *
     `;

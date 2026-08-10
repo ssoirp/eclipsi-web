@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
+import sharp from "sharp";
 import { sql } from "@/lib/db";
 
 export async function POST(request: Request) {
@@ -12,8 +13,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing file or location_id" }, { status: 400 });
     }
 
-    const blob = await put(`eclipsi/${locationId}/${file.name}`, file, {
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
+    const webpBuffer = await sharp(inputBuffer)
+      .rotate()
+      .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    const webpName = file.name.replace(/\.[^.]+$/, "") + ".webp";
+    const blob = await put(`eclipsi/${locationId}/${webpName}`, webpBuffer, {
       access: "public",
+      contentType: "image/webp",
     });
 
     await sql`
