@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ShowcaseLocation, displayName, entornLabel } from "./showcaseTypes";
+import { ShowcaseLocation, displayName, entornLabel, avgRating } from "./showcaseTypes";
 
 const ENTORN_HEX: Record<string, string> = {
   natura: "#16a34a",
@@ -33,7 +33,7 @@ export default function EclipseShowcaseMap({
   const center: [number, number] = [41.48, 0.78];
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden" style={{ height: "600px" }}>
+    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden" style={{ height: "720px" }}>
       <MapContainer center={center} zoom={10} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
@@ -46,19 +46,31 @@ export default function EclipseShowcaseMap({
             icon={iconFor(loc.tipus_entorn)}
             eventHandlers={{ click: () => onOpen(loc) }}
           >
-            <Tooltip direction="top" offset={[0, -30]}>
-              <div className="flex gap-2 items-center" style={{ minWidth: 140 }}>
-                {loc.images?.[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={loc.images[0].url} alt="" className="w-10 h-10 object-cover rounded" />
-                ) : (
-                  <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-[10px]">
-                    sense foto
+            <Tooltip direction="top" offset={[0, -36]} opacity={1} className="eclipse-map-tooltip">
+              <div style={{ width: 260 }}>
+                <div className="relative">
+                  {loc.images?.[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={loc.images[0].url} alt="" className="w-full h-36 object-cover rounded-t-lg" />
+                  ) : (
+                    <div className="w-full h-36 rounded-t-lg bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                      sense foto
+                    </div>
+                  )}
+                  {avgRating(loc) > 0 && (
+                    <span className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 text-white text-sm font-bold px-2 py-0.5 rounded-full">
+                      <span style={{ color: "#fbbf24" }}>★</span>
+                      {avgRating(loc).toFixed(1)}
+                    </span>
+                  )}
+                </div>
+                <div className="px-1 pt-2 pb-1">
+                  <div className="text-base font-bold leading-tight" style={{ color: "#111827" }}>{displayName(loc)}</div>
+                  <div className="text-xs mb-1.5" style={{ color: "#6b7280" }}>{entornLabel(loc.tipus_entorn)}</div>
+                  <div className="flex items-center gap-3 text-sm font-bold">
+                    <span style={{ color: "#2563eb" }}>{loc.distancia_min} min</span>
+                    <span style={{ color: "#9333ea" }}>{loc.durada_totalitat_s}s totalitat</span>
                   </div>
-                )}
-                <div>
-                  <div className="text-xs font-bold" style={{ color: "#111827" }}>{displayName(loc)}</div>
-                  <div className="text-[10px]" style={{ color: "#6b7280" }}>{entornLabel(loc.tipus_entorn)}</div>
                 </div>
               </div>
             </Tooltip>
