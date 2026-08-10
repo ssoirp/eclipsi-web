@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import { compressImage } from "@/lib/imageCompress";
 
 const EclipseMap = dynamic(() => import("./EclipseMap"), { ssr: false });
 
@@ -121,11 +122,22 @@ export default function EclipseTable() {
     setLocations((prev) => prev.map((loc) => loc.id === locationId ? { ...loc, visible: !current } : loc));
   };
   const uploadImage = async (locationId: number, file: File) => {
-    const fd = new FormData(); fd.append("file", file); fd.append("location_id", String(locationId));
-    await fetch("/api/images", { method: "POST", body: fd });
+    const { blob, name } = await compressImage(file);
+    const fd = new FormData();
+    fd.append("file", blob, name);
+    fd.append("location_id", String(locationId));
+    const res = await fetch("/api/images", { method: "POST", body: fd });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Error pujant la imatge (${res.status})`);
+    }
   };
   const uploadImages = async (locationId: number, files: FileList) => {
-    await Promise.all(Array.from(files).map((f) => uploadImage(locationId, f)));
+    const results = await Promise.allSettled(Array.from(files).map((f) => uploadImage(locationId, f)));
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failed.length > 0) {
+      alert(`No s'han pogut pujar ${failed.length} imatge(s): ${failed[0].reason?.message ?? failed[0].reason}`);
+    }
     await fetchData();
   };
   const deleteImage = async (id: number, url: string) => {
